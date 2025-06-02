@@ -1,0 +1,211 @@
+---
+title: "Econ 491 Problem Set 5"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Question 1 (concept)[30p (=10+10+10)]
+
+## We perform best subset, forward stepwise, and backward stepwise selection on a single data set. For each approach, we obtain p + 1 models, containing 0, 1, 2, . . . , p predictors.
+
+Explain your answers:
+
+### (a) Which of the three models with k predictors has the smallest training RSS?
+
+best subset selection will have the lowest residual sum of squares, this is because
+BSS considers all possible combinations of k predictors and chooses the one that minmizes
+the training RSS the best 
+
+### (b) Which of the three models with k predictors has the smallest test RSS?
+
+it depends on the information in the data, this takes us to the Bias-Variance tradeoff, 
+BSS might overfit the data being that it directly minimizes the training RSS. This
+in turn does not translate to a low training RSS. Stepwise selection is  less flexible, 
+in turn, it might not capture the complex relationship of the data, which might 
+cause high test RSS. 
+
+### (c) True or False:
+
+#### i. The predictors in the k-variable model identified by forward stepwise are asubset of the predictors in the (k + 1)-variable model identified by forwardstepwise selection.
+
+True: forward stepwise selection adds one predictor at a time, but keeps the
+previous predictors. All predictors in the K model are in the K+1 model. 
+
+#### ii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k + 1)-variable model identified by backward stepwise selection.
+True: We start with K+1 predictors, then we move to K predictors, creating a subset
+of the K+1 set. Backwards SS removes one predictor at a time. 
+
+
+#### iii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k + 1)-variable model identified by forward stepwise selection.
+False: They choose different predictors at different times, so there is no 
+guarantee that they select in the same order. In that case, taking a subset of both 
+K sets, will lead to different subsets. 
+
+#### iv. The predictors in the k-variable model identified by forward stepwise are a subset of the predictors in the (k + 1)-variable model identified by backward stepwise selection.
+False: for the same reasions in (iii)
+
+#### v. The predictors in the k-variable model identified by best subset are a subset of the predictors in the (k + 1)-variable model identified by best subset selection.
+
+BSS goes over every possible combination of K predictors, that does not mean the K + 1 
+set contains all predictors in the K set. It can be completely different, or have minor 
+changes, etc. 
+
+
+
+
+# Question 2 (concept)[30p (=10+10+10)]
+
+## For parts (a) through (c), indicate which of i. through iv. is correct. Justify your answer.
+
+###(a) The lasso, relative to least squares, is:
+
+#### i. More flexible and hence will give improved prediction accuracy when its in-crease in bias is less than its decrease in variance.
+
+False: lasso shrinks coefficents, some of them will be considered insignificant and will not be included 
+in the model, least squares does not apply this L1 penalty, so it is a bit more complex than Lasso. 
+
+
+#### ii. More flexible and hence will give improved prediction accuracy when its in- crease in variance is less than its decrease in bias.
+
+False: once again lasso reduces the complexity of the model compared to least squares
+
+#### iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+
+True: Because lasso makes thing a bit more simple, it will reduce the variance, but increase the Bias. 
+
+
+#### iv. Less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+
+False: less flexible models decrease variance, but increase bias. So this logic 
+is backwards. 
+
+### (b) Repeat (a) for ridge regression relative to least squares.
+
+#### i. More flexible and hence will give improved prediction accuracy when its in-crease in bias is less than its decrease in variance.
+False: Ridge applies an L2 Penalty, which makes it less flexible than least squares. It shrinks the value 
+of coefficients but penalizes larger ones for dominating the model. 
+
+#### ii. More flexible and hence will give improved prediction accuracy when its in- crease in variance is less than its decrease in bias.
+False: Ridge is less flexible than least squares, so this is also incorrect
+#### iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+True: Ridge is less flexible than lasso, and when its increase in bias is less than the reduction in variance 
+we've improved our model. Which will lead to better prediction accuracy. 
+
+#### iv. Less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+False: althought ridge is less flexible, if its increase in bias is greater than its decrease in variance 
+the model is not guaranteed to have improved prediction accuracy. 
+### (c) Repeat (a) for non-linear methods relative to least squares.
+
+#### i. More flexible and hence will give improved prediction accuracy when its in-crease in bias is less than its decrease in variance.
+True: Non-linear methods are more flexible than least squares because they do not 
+make any assumptions about the functional form of the data, unlike least squares. 
+When the increase in bias is less than the decrease in variance, we've become more accurate
+than the original least squares model
+
+#### ii. More flexible and hence will give improved prediction accuracy when its in- crease in variance is less than its decrease in bias.
+False: Although non-linear methods are more flexible, the bias variance trade off is backwards. 
+If we increase variance more than we decrease bias. We are not certain the model will improve 
+prediction accuracy 
+#### iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+False: Non-linear models are more flexible than least squares, like mentioned in question 
+i, non-linear models do not assume any funcitonal form about the data. 
+#### iv. Less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+False: same reasioning as iii 
+
+
+
+# Question 3 (applied)[40p (=0+0+20+20)]
+
+## In this exercise, we will generate simulated data, and will then use this data to perform best subset selection. (Hint: To be able to reproduce your results, do not forget to set the seed in your randomization using the command set.seed().)
+
+### (a) Use the rnorm() function to generate a predictor X of length n = 100, as well as a noise vector  of length n = 100.
+
+```{r Question 3.A}
+set.seed(9)
+
+n <- 100
+X <- rnorm(n)
+epsilon <- rnorm(n)
+```
+
+### (b) Generate a response vector Y of length n = 100 according to the model Y = β0 + β1X + β2X2 + β3X3 + , where β0, β1, β2, β3 are constants of your choice.
+```{r Question 3.B}
+beta0 <- 2
+beta1 <- 3
+beta2 <- -1
+betda3 <- 0.5
+
+# response
+Y <- beta0 + beta1 * X + beta2X^2 + beta3X^3 + epsilon
+```
+### (c) Use the regsubsets() function to perform (exhaustive or global) best subset se- lection in order to choose the best model containing the predictors X, X2, . . . , X10. What is the best model obtained according to Cp, BIC, and adjusted R2? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained. Note you will need to use the data.frame() function to create a single data set containing both X and Y .
+```{r Question 3.C}
+library(leaps)
+
+data <- data.frame(Y = Y)
+for (i in 1:10) {
+  data[[paste0("X", i)]] <- X^i
+}
+
+#  best subset selection
+best_fit <- regsubsets(Y ~ ., data = data, nvmax = 10)
+
+#  summary 
+best_summary <- summary(best_fit)
+
+# Plots!
+par(mfrow = c(1, 3))
+plot(best_summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "b", main = "Cp")
+which.min(best_summary$cp)
+
+plot(best_summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "b", main = "BIC")
+which.min(best_summary$bic)
+
+plot(best_summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted R2", type = "b", main = "Adjusted R2")
+which.max(best_summary$adjr2)
+
+coef(best_fit, which.max(best_summary$adjr2))
+```
+
+3 variables is our Winner! BSS finds that adjusted R2 is highest with three variables, 
+it also minimizes Cp and BIC the most. That minimum Cp and BIC tells us the qualtiy of the fit 
+at 3 variables is the best. Its good that they agree on a variable because BIC has a harsher
+penalty for overly complex models. 
+
+y = 2.1460146 +  3.1321199X1  -0.9820160X2 +   0.4226546X3 
+
+This is very close to the original model, so it looks good to me!
+
+
+###(d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the results in (c)?
+
+```{r Question 3.D}
+# Forward 
+forward_fit <- regsubsets(Y ~ ., data = data, nvmax = 10, method = "forward")
+forward_summary <- summary(forward_fit)
+
+# Backward
+backward_fit <- regsubsets(Y ~ ., data = data, nvmax = 10, method = "backward")
+backward_summary <- summary(backward_fit)
+
+# Plot comparison
+par(mfrow = c(1, 3))
+plot(best_summary$adjr2, type = "b", col = "black", xlab = "Variables", ylab = "Adj R2", main = "Best Subset")
+plot(forward_summary$adjr2, type = "b", col = "blue", xlab = "Variables", ylab = "Adj R2", main = "Forward Stepwise")
+plot(backward_summary$adjr2, type = "b", col = "red", xlab = "Variables", ylab = "Adj R2", main = "Backward Stepwise")
+
+#  adj r^2
+coef(forward_fit, which.max(forward_summary$adjr2))
+coef(backward_fit, which.max(backward_summary$adjr2))
+```
+
+It looks like adj R2 FS peaks at five variables, but BASS peaks 
+at 8 Forward and Backwards were slightly off from the true model, while best subset 
+got it pretty much on the nose. 
+
+It looks like FSS and BASS are overfitting the model just a bit, its attributing some of the prediction
+to additional variables, although they get pretty small, i'm assuming its due the model picking 
+up some noise because backwards subset doesnt remove enough and forward adds too many of course. 

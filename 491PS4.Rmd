@@ -1,0 +1,264 @@
+---
+title: "491PS4"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1 
+
+Suppose we collect data for a group of students in a statistics class with variables X1 =
+hours studied, X2 = undergrad GPA, and Y = receive an A. We fit a logistic regression
+and produce estimated coefficient, ˆβ0 = −6, ˆβ1 = 0.05, ˆβ2 = 1.
+
+### (a) Estimate the probability that a student who studies for 40 hours and has an un-
+dergrad GPA of 3.5 gets an A in the class.
+
+Regression formula Y = -6 + 0.05X1 + X2
+
+Y = -6 + 0.05(40) + 3.5 
+Y = -0.5
+
+Logit Function 1 / 1 + e^-Y
+
+1 / 1 + e^0.5 = 0.378 
+
+This student has a 37.8 Percent chance of getting an A in this class
+
+
+### (b) What are the odds the student in part (a) will in fact get an A in the class?
+
+Odds Ratio = P(A) / 1 - P(A) 
+
+0.378 / 1 - 0.378 = 0.607 
+
+The odds that this student will get an A in this class is 60.7% 
+
+### (c) How many hours would the student in part (a) need to study to have a 50% chance of getting an A in the class?
+
+P(A)  = 1 / 1 + e^-(Y)
+
+substituting 0.5 for P(A)
+
+0.5 = 1 / 1 + e^-(Y)
+
+2 = 1 + e^-(Y)
+
+1 = e^-(Y)
+
+taking the natural log 
+
+0 = -(Y)
+
+Now we can substitute our regression equation for Y
+
+0 = 6 - 0.05(X1) - 3.5
+
+-2.5 = -0.05(X1)
+
+2.5 / 0.05 = 50 hours studied to get an A 
+
+
+## Question 2 
+
+### Suppose that we take a data set, divide it into equally-sized training and test sets, and then try out two different classification procedures. First we use logistic regression and get an error rate of 20% on the training data and 30% on the test data. Next we use 1-nearest neighbors (i.e. K = 1) and get an average error rate (averaged over both test and training data sets) of 15%. Based on these results, which method should we prefer to use for classification of new observations? Why?
+
+We need to understand the Error rate of the K-NN approach to know which one is better. 
+We are given the average of the Training and Test error for KNN. 
+
+So 
+
+Training + KNN / 2 = 15%
+
+This would mean then that 
+
+Training + KNN = 30% 
+
+We know that KNN with K = 1 almost perfectly minimizes the training error, because
+it memorizes the training data entirely. So lets say that the training error is 0% 
+
+in this case, the test error is 30% for KNN (K = 1). This tells us that KNN 
+is overfitting this data because it performs very well on the training data
+but just as bad as log-regression on the test data. 
+
+Because of this overfitting, we should use the Log-Regression model because KNN
+is just memorizing the training data instead of learning patterns, Log-reg gives 
+us a more reliable error, it makes sense given the training error. 
+
+
+## Question 3 
+
+This problem has to do with odds.
+### (a) Suppose 1500 students take a written exam on calculus. On average, how many students with an odds of 0.20 of failing the exam will in fact fail?
+
+The probability of failing is Odds / 1 + Odds
+
+Given that the odds are 20% 
+
+20 / 1.20 = 0.1667 (16.67%)
+
+out of 1500 students * 16.67% of them failing 
+
+250 students fail 
+
+
+
+
+### (b) Suppose that a student has a 16% chance of failing the exam. What are the odds that she will fail?
+
+with a probability of failing @ 16%, the odds of faliing are 
+
+P(A) / 1 - P(A)
+
+.16 / 1 - .16 = 0.190
+
+so the odds of that student failing are .19
+
+
+##Question 4 
+In this problem, you will develop a model to predict whether a given car gets high or low
+gas mileage based on the Auto data set. Auto is part of the ISLR2 package.
+
+### (a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median() function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+
+```{r Question 4.A}
+library(ISLR2)
+
+median <- median(Auto$mpg)
+
+Auto$mpgBinary <- ifelse(Auto$mpg > median, 1, 0)
+
+
+View(Auto)
+
+```
+
+
+### (b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+
+
+```{r Question 4.B}
+library(ISLR2)   
+library(ggplot2) 
+
+pairs(Auto[, c("mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "year")], 
+      col = Auto$mpg01, pch = 19)
+
+
+cor(Auto[, c("mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "year")])
+
+plot(Auto$weight, col = Auto$mpgBinary, pch = 19, 
+     main = "MPG vs Weight", xlab = "Weight", ylab = "MPG")
+
+plot(Auto$horsepower, Auto$mpg, col = Auto$mpgBinary, pch = 19, 
+     main = "MPG vs Horsepower", xlab = "Horsepower", ylab = "MPG")
+
+
+boxplot(Auto$displacement ~ Auto$mpgBinary, col = c("red", "blue"), 
+        main = "MPG01 vs Displacement", xlab = "MPG01 (0 = Low, 1 = High)", ylab = "Displacement")
+
+boxplot(Auto$weight ~ Auto$mpgBinary, col = c("red", "blue"), 
+        main = "MPG01 vs Weight", xlab = "MPG01 (0 = Low, 1 = High)", ylab = "Weight")
+
+
+
+
+```
+
+It looks like all values are worth putting into a regression model 
+
+
+### (c) Split the data into a training set and a test set. Use as training set the observations with model years 70-79.
+
+
+
+```{r Question 4.C}
+train_data <- Auto[Auto$year <= 79, ]
+
+test_data <- Auto[Auto$year > 79, ]
+
+
+```
+
+### (d) Perform logistic regression on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained? Present the confusion matrix from the test set.
+
+
+
+```{r Question 4.D}
+logistic_model <- glm(mpgBinary ~ year + cylinders + weight + horsepower + displacement,
+                      data = train_data, 
+                      family = binomial)
+
+summary(logistic_model)
+
+
+probabilities <- predict(logistic_model, newdata = test_data, type = "response")
+
+predictions <- ifelse(probabilities > 0.5, 1, 0)
+
+predictions <- as.factor(predictions)
+
+test_error <- mean(predictions != test_data$mpgBinary)
+
+conf_matrix <- table(Predicted = predictions, Actual = test_data$mpgBinary)
+
+cat("Test Error:", test_error, "\n")
+print(conf_matrix)
+
+```
+
+
+                      family = binomial)
+### (e) Perform KNN on the training data, with several values of K, in order to predict mpg01. Use only the variables that seemed most associated with mpg01 in (b). What test errors do you obtain? Which value of K seems to perform the best on this data set? Present the confusion matrices from the test set for each value of K you choose in your analysis.
+
+
+```{r Question 4.E}
+library(class)   
+
+
+important_features <- c("year", "cylinders", "weight", "horsepower", "displacement")
+
+
+
+X_train <- train_data[, important_features]
+X_test <- test_data[, important_features]
+y_train <- train_data$mpgBinary
+y_test <- test_data$mpgBinary
+
+X_train_scaled <- scale(X_train)
+X_test_scaled <- scale(X_test)
+
+
+# K = 1 
+knn_pred_1 <- knn(train = X_train_scaled, test = X_test_scaled, cl = y_train, k = 1)
+conf_matrix_1 <- table(Predicted = knn_pred_1, Actual = y_test)
+accuracy_1 <- mean(knn_pred_1 == y_test)
+
+# K = 3 
+knn_pred_3 <- knn(train = X_train_scaled, test = X_test_scaled, cl = y_train, k = 3)
+conf_matrix_3 <- table(Predicted = knn_pred_3, Actual = y_test)
+accuracy_3 <- mean(knn_pred_3 == y_test)
+
+# K = 5 
+knn_pred_5 <- knn(train = X_train_scaled, test = X_test_scaled, cl = y_train, k = 5)
+conf_matrix_5 <- table(Predicted = knn_pred_5, Actual = y_test)
+accuracy_5 <- mean(knn_pred_5 == y_test)
+
+cat("\nConfusion Matrix for K = 1:\n")
+print(conf_matrix_1)
+cat("Accuracy for K = 1:", accuracy_1, "\n")
+
+cat("\nConfusion Matrix for K = 3:\n")
+print(conf_matrix_3)
+cat("Accuracy for K = 3:", accuracy_3, "\n")
+
+cat("\nConfusion Matrix for K = 5:\n")
+print(conf_matrix_5)
+cat("Accuracy for K = 5:", accuracy_5, "\n")
+
+```
+It looks like K = 3 Acheived the highest accuracy with a test error of 56.5%

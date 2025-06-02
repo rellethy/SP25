@@ -1,0 +1,159 @@
+---
+title: "Problem Set 2"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Question 1
+
+For each of parts (a) through (d), indicate whether we would generally expect the per-
+formance of a flexible statistical learning method to be better or worse than an inflexible
+method. Justify your answer.
+
+(a) The sample size n is extremely large, and the number of predictors p is small.
+
+More flexible models can have higher performance but they need a large traning set, 
+so in this case, a more flexible model would be ideal. 
+
+(b) The number of predictors p is extremely large, and the number of observations n
+is small.
+
+A more flexible model needs a large dataset, so in this case a less flexible method
+would be more ideal. When there are more predictors than training data, the model 
+is likely to overfit because of lots of noise. 
+
+(c) The relationship between the predictors and response is highly non-linear.
+
+a less flexible learning method needs as close to a linear relationship as possible
+for accuracy. You might not even learn anything while trying to predict using a non-linear
+dataset. In this case, a more flexible, non-parametric model, that can adapt to more intricate
+relationships, would perform better. 
+
+(d) The variance of the error terms, Var(), is extremely high.
+
+less flexible method because the accuracy due to noise is surely going to be very low for the 
+more flexible model. A regression, for example, can do a good job at reducing the variance. 
+
+
+## Question 2
+
+![Bias Variance Composition](/Users/ramseyellethy/Downloads/BVC.png)
+
+Bias^2 starts high and decreases as you increase flexibility, less flexible models
+make hardcore assumptions about the data, so there are biases to be introcuded
+as you increace the flexibility of your mdoel, you can reduce bias by capturing 
+pattterns better. 
+
+
+
+Error in variance increases as you incerease flexibility. 
+A higher flexibility model fine tune to the data a lot closer than a less flexible, 
+so small variations in the data are personified greatly. Because less flexible models
+make more generalizations, they have lower variance. 
+
+ 
+ Test Mean Square Error follows a u shape curve because increased flexibility 
+ lowers bias until after a point, too much flexibility causes the model to over fit.
+ Which can increase test error. 
+
+ 
+ Training Mean Square Error initially starts higher and decreases linearly, more 
+ flexible models fit the training data better, leading to lower training error.
+ 
+ 
+ Bayes Error is a constant error that cannot be eliminated with any model, this is 
+ noise because of real world observations. 
+
+
+## Question 3  
+
+
+```{r cars}
+library(class)
+data <- data.frame(
+  Obs = c(1, 2, 3, 4, 5, 6),
+  X1 = c(0, 2, 0, 0, -1, 1),
+  X2 = c(3, 0, 1, 1, 0, 1),
+  X3 = c(0, 0, 3, 2, 1, 1),
+  Y = factor(c("Red", "Red", "Red", "Green", "Green", "Red")) 
+)
+
+test_point <- c(0, 0, 0)
+
+data$Distance <- apply(data[, c("X1", "X2", "X3")], 1, function(row) {
+  dist(rbind(row, test_point))
+})
+
+print(data)
+
+prediction <- knn(train = data[, c("X1", "X2", "X3")], 
+                  test = matrix(test_point, nrow = 1), 
+                  cl = data$Y, k = 1)
+
+print(paste("Prediction with K = 1:", prediction))
+
+predictionK3 <- knn(train = data[, c("X1", "X2", "X3")], 
+                  test = matrix(test_point, nrow = 1), 
+                  cl = data$Y, k = 3)
+
+print(paste("Prediction with K = 3:", predictionK3))
+
+
+```
+With K = 1,
+
+the KNN algirthm only consideres the nearest neighbor. So for this case, 
+the nearest neighbor is the observation with the euclidian distance closest to (0,0,0). 
+Looking at our distances, we see that green has the smallest distance, 
+
+With K = 3 
+
+We are now taking into account the 3 nearest points closest to 0, based on the 
+distances we calculated, 2/3 nearest neighbors are red, so they take a majority. 
+
+
+We can expect the best value for K to be small because a small K is better for 
+non-linear decision boundaries because it lets the KNN capture local patterns, which is really important 
+for accurate classfication. 
+
+
+
+## Question 4 
+
+With a very flexible approach, we can fit the training data very closely, we can 
+achieve a lower training error than that of a more flexible approach. This can help
+us capture these non-linear relationships between our target and the rest of the data. 
+
+The problem with this approach is that the model might overfit the training data,
+it takes in the noise from the training data and actually attributes it to the model 
+rather than the real patterns. Another problem is that we need a really large
+dataset to capture these relationships accurately. Otherwise, there will be 
+poor generalizations from our model 
+
+Its best to use this approach when the relationship between the features and the target
+is not linear. Its also important that you have a large traning data set. In cases
+where we have a linear relationship between the target and features, or small traning data, 
+we'd use the less flexible model 
+
+## Question 5 
+
+Parametric approaches make assumptions about the form of the relationship between
+features and the target. The best exmample is how a linear regression assumes that 
+there is a linear relationship between X and Y. 
+
+A non parametric approach does not make as strong assumptions about the function 
+of the target and features, as the data grows, we can increase the number of parameters
+
+Parametric approaches are nice because they are simple and easy to interpret. They 
+give a good baseline understanding of what we're looking at, it also requires less data, so 
+we can generally be more efficent with our approach 
+
+Parametric approaches have limited flexibiliy, those non linear relationships are 
+lost in the wind when we use a model like that. If the model is assumed to be 
+some function and its not, its basically useless. 

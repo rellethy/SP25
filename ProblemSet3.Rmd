@@ -1,0 +1,287 @@
+---
+title: "ProblemSet3"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1 
+
+Suppose we have a data set with five predictors, X1 = GPA, X2 = IQ, X3 = Level (1
+for College and 0 for High School), X4 = Interaction between GPA and IQ, and X5 =
+Interaction between GPA and Level. The response is starting salary after graduation (in
+thousands of dollars). Suppose we use least squares to fit the model, and get ˆβ0 = 50,
+ˆβ1 = 20, ˆβ2 = 0.07, ˆβ3 = 35, ˆβ4 = 0.01, ˆβ5 = −10.
+
+### (a) Which answer is correct, and why?
+
+#### i. For a fixed value of IQ and GPA, high school graduates earn more, on average, than college graduates.
+
+The value that signifies a college graduate is 1 and a highschool graduate 0 
+so for being a college graduate, your salary increases by 35,000 dollars. 
+So this is an incorrect statement. 
+
+
+#### ii. For a fixed value of IQ and GPA, college graduates earn more, on average, than high school graduates.
+
+This is correct because of the coefficient that tells us a college graduate will make
+35,000 dollars more than a non college grad. (B3 (1 = College, 0 HS))
+
+
+#### iii. For a fixed value of IQ and GPA, high school graduates earn more, on average, than college graduates provided that the GPA is high enough.
+
+Looking at the interaction term, because its negative, we are led to belive that 
+GPA doesnt make as much of an impact for college graduates than for highschool
+graduates. But GPA alone is not enough to beat a college grad, the base effect
+of level is 35,000. Thats much stronger than the -10 thousnad adjustment from 
+GPA * Level. So even at a very high gpa, college grads still net more than 
+highschool grads. 
+
+#### iv. For a fixed value of IQ and GPA, college graduates earn more, on average, than high school graduates provided that the GPA is high enough.
+
+This is true because college grads make 35,000 dollars more, and gpa and level 
+are negative, but only by 10,000. The effect of gpa on salary is smaller for grads
+than highschool grads. But college grads will earn more on average. 
+
+
+
+### (b) Predict the salary of a college graduate with IQ of 110 and a GPA of 4.0.
+
+20 * 4.0 + 0.07 * 110 + 35 * 1 + 0.01 * 440 + -10 * 4.0 = 87.1 Thousand Dollars
+
+### (c) True or false: Since the coefficient for the GPA/IQ interaction term is very small, there is very little evidence of an interaction effect. Justify your answer.
+
+This is true, the coefficient is almost 0, meaning that the interaction has 
+almost no effect on the prediction of someones salary. Because that coefficient 
+doesn't contribute much to the response variable, we say that there is not enough evidence 
+of an effect due to an interaction. It looks like for every 1 point increase
+in gpa * IQ, your salary only increases by 10 dollars. Which is wildly insignificant 
+in the scheme of thousands of dollars. 
+
+
+## Question 2 (applied)[32p (=0+0+2+0+2+2+6+10+10)]
+
+In this exercise you will create some simulated data and will fit simple linear regression
+models to it. Make sure to use the command set.seed(1) prior to starting part (a) to
+ensure consistent and reproducible results.
+
+###(a) Using the rnorm() function, create a vector, x, containing 100 observations drawn from a N (0, 1) distribution. This represents a feature, X.
+
+
+
+```{r part a}
+set.seed(1)
+
+x <- rnorm(100)
+
+```
+
+
+### (b) Using the rnorm() function, create a vector, eps, containing 100 observations drawn from a N (0, 0.25) distribution – a normal distribution with mean zero and variance 0.25. (To ensure consistency, issue the ?rnorm to check the syntax of the command.)
+
+```{r part b}
+eps <- rnorm(100, mean = 0, sd = 0.5)
+```
+
+
+### (c) Using x and eps, generate a vector y according to the model Y = −1 + 0.5X + e What is the length of the vector y? What are the values of β0 and β1 in this linearmodel?
+
+
+```{r part c}
+y <- -1 + 0.5 * x + eps
+
+length(y)
+
+```
+
+In this model B0 is -1 and B1 is 0.5 
+
+### (d) Create a scatterplot displaying the relationship between x and y. Comment on what you observe.
+
+
+```{r part d}
+plot(x, y)
+```
+
+
+### (e) Fit a least squares linear model to predict y using x. Comment on the model obtained. How do ˆβ0 and ˆβ1 compare to β0 and β1?
+
+
+```{r part e}
+
+model <- lm(y ~ x)
+
+model
+```
+After fitting the OLS model for x and y, we see that to coefficents are very similar
+to that of our original equation. We can attribute the slight variation 
+in the numbers to the error term we inclueded, eps. 
+
+
+### (f) Display the least squares line on the scatterplot obtained in (d). Draw the population regression line on the plot, in a different color. Use the legend() command to create an appropriate legend.
+
+
+```{r part f}
+
+plot(x, y)
+abline(model, col = "red")
+abline(a = -1, b = 0.5, col = "green")
+
+legend("topleft", legend = c("Least Squares Line", "Population Regression Line"),
+       col = c("red", "green"), lwd = 2, lty = c(1, 2))
+
+```
+
+### (g) Now fit a polynomial regression model that predicts y using x and x2. Is thereevidence that the quadratic term improves the model fit? Explain your answer. (Hint: in R, given a predictor X we can create the squared term by entering I(X^2).)
+
+```{r part g}
+
+squaredmodel <- lm(y ~ x + I(x^2))
+summary(model)
+summary(squaredmodel)
+```
+After including an x^2 term, we get a statistically insignificant x^2 term,
+the p-value is much greater than 0.05. Looking at the R^2 value for how well 
+the model is fitted to the data, we see that the multiple R^2 increased by .01
+which indicates a better fit, but this change is very miniscule. So we cannot
+confidently say that including a quadratic fits this regression any better. 
+
+### (h) (concept question - no computation is required) Assume a data set generated
+from a simple linear model, for instance, according to the model in (c). Consider
+the training M SE1 from fitting the linear regression Y = β0 + β1X + , and the
+training M SE2 from fitting the quadratic regression Y = β0 + β1X + β2X2 + .
+Which of the two training MSEs, if any, will be smaller? Justify your answer.
+
+Training MSE will always be better when you have a more complex model, just because
+of the added flexibility that you have when it comes to fitting your data. That
+extra parameter allows this regression to capture curvature that it otherwise 
+could not, which would reduce or keep the training MSE the same. 
+
+### (i) (concept question - no computation is required) Answer (h) for test M SE rather
+than training M SE.
+
+for test MSE, we may run into problems of overfitting. In this case, we see that 
+for part C, the model is actually strictly linear. So fitting this quadratic term
+to our model, will actually attribute some of the error due to randomness, as being 
+apart of our model. This would increase test MSE. 
+
+## Question 3 (applied)[52p (=0+6+6+8+6+6+6+10+4)]
+
+This question should be answered using the Carseats data set. (Hint: the Carseats
+data set is used in Lab of chapter 3, section 3.6.6 of the ISLR text.)
+The Carseats data set is in the package ISLR2, which includes all data sets provided
+by the textbook. Before starting your data analysis in R, make sure that you attach the
+ISLR2 package with the command library(). You need to issue this command every
+time you invoke R and want to analyze one of the data sets included in ISLR2 package.
+
+> library(ISLR2)
+
+The first time you want to use the library, R will complain that the package has not been
+installed. Rstudio will ask you to install this by clicking on a button. Alternatively, you
+can install the package manually by issuing the command
+> install.packages("ISLR2")
+
+2
+### (a) Look at the data using the View() function. Notice that there are some qualitative variables with two or more levels.
+
+```{r part c.a}
+library(ISLR2)
+
+View(Carseats)
+```
+
+### (b) Fit a multiple regression model to predict Sales using US, ShelveLoc, Price, CompPrice, and the interaction term Price×CompPrice.
+
+```{r part c.b}
+attach(Carseats)
+
+sales <- lm(Sales ~ ShelveLoc + Price + CompPrice + Price * CompPrice)
+
+sales
+
+```
+
+
+### (c) Write out the model in equation form, being careful to handle the qualitative variables properly.In particular, for the predictor ShelveLoc that indicated the quality of the shelving location, use the command
+
+> contrasts(ShelveLoc)
+
+to see the coding that R uses for the dummy variables and report which category
+is the baseline category (Hint: see text p120).
+
+Sales = 5.516 (ShelveLocBad) + 4.863 + ShelvelocGood + 1.809 * ShelveLocMedium -
+- 0.09739 * Price + 0.0835 CompPrice
+
+### (d) Provide an interpretation of each coefficient in the model. Be careful—some of the variables in the model are qualitative!
+
+The first Coefficent, is the baseline, where price = 0, Comp Price = 0, and 
+shelf location is bad.
+
+The second coefficient tells us that if the shelf location is good, 
+sales will increase by 4.863 units compared to bad, if we hold everything else 
+constatnt
+
+the third coefficent tells us that if the shelf location is medium, sales will 
+increase by only 1.808 units compare to bad, if everything else is held constant, 
+this increase is not as good as a good shelf location, but we'd still be better off
+than with a bad shelf location.
+
+The third coefficent tells us that an increase in price will decrease sales 
+but by a small amount, this alligns with common ideas of price vs quantity demanded 
+
+the last coefficeint tells us about competitor prices, an increase in competitor 
+prices will increase sales, which makes sense with the common ideas of substitution
+
+
+### (e) Test the hypothesis that all predictors simultaneously are not associated withSales.
+
+```{r part c.e}
+ 
+summary(sales)
+```
+The F-Statistic for overall significance is 182 with an extremly small p-vlaue 
+meaning the proability of observing this f-stat under the null hypothesis that 
+all intercepts = 0 is close to 0. This f-stat tells us that the explained variance 
+is much higher than the noise. 
+
+### (f) For which of the predictors can you reject the null hypothesis H0 : βj = 0?
+
+All predictors except the interaction between Price and Competitor prices 
+are not statistically 0, all of their p-values are less than 0.05 
+
+### (g) On the basis of your response to the previous question, fit a smaller model that only uses the predictors for which there is evidence of association with the outcome.
+
+```{r part c.g}
+
+sigmodel <- lm(Sales ~ ShelveLoc + Price + CompPrice + Price)
+sigmodel
+```
+
+### (h) How well do the models in (b) and (g) fit the data? Explain using, primarily, the RSE and R2 statistics.
+```{r part c.h}
+summary(sales)
+summary(sigmodel)
+```
+This model has an R^2 value of 69.87and 69.87%, meaning that our predictors explain 69.8
+of the variability in this model, which is quite high. This suggests a strong relationship 
+between Sales and our predictors, but its a bit stronger in the entirely significant 
+model 
+
+
+our RSE value came out to 1.558 for the entirely significant model
+and 1.56 for the model that included the insignificant interaction, generally 
+a lower RSE is better. So the model without the insignificant interaction is 
+just a bit more accurate. 
+
+
+### (i) Using the model from (g), obtain 95% confidence intervals for the coefficient(s).
+
+
+
+```{r part c.i}
+confint(sigmodel, level = 0.95)
+```

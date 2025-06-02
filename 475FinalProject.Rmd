@@ -1,0 +1,616 @@
+---
+title: "ECON 475 Final Project"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Question 1. Use the dataset elec.csv that is available on Canvas. The variable elec is electricity retail sales to the residential sector in the United States in million of kilowatt hours. The sample is at monthly frequency and covers the period from January 1973 and December 2011. Define the training sample as all information available up to December 2010.
+
+## (a) Let yt denote the log of electricity retail sales. Plot yt over time. Is there a trend?
+
+```{r 1.a}
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+elec_data <- read_csv("elec.csv") 
+
+elec_data$log_elec <- log(elec_data$elec)
+
+elec_data <- elec_data %>%
+  mutate(
+    date = as.Date(paste0(substr(date, 1, 4), "-", substr(date, 6, 7), "-01"))
+  )
+
+
+View(elec_data)
+
+ggplot(elec_data, aes(x = date, y = log_elec)) +
+  geom_line(color = "darkblue", group = 1) +
+  labs(
+    title = "Log of Electricity Retail Sales Over Time",
+    x = "Date",
+    y = "Log(Electricity Sales)"
+  ) +
+  theme_minimal()
+
+
+```
+
+It looks like the data has an upward trend over time.
+
+## (b) Estimate a model with a linear and a quadratic trend. Which one would you choose? From now on, use the trend model you chose in part (b)
+
+```{r 1.b}
+elec_data <- elec_data %>%
+  mutate(
+    t = 1:n(),                # time trend
+    t2 = t^2                 # quadratic term
+  )
+
+# Linear trend model
+linear_model <- lm(log_elec ~ t, data = elec_data)
+
+# Quadratic trend model
+quad_model <- lm(log_elec ~ t + t2, data = elec_data)
+```
+
+```{r summaries}
+# Compare models
+summary(linear_model)
+summary(quad_model)
+```
+
+```{r AIC}
+# AIC comparison
+(AIC(linear_model, quad_model))
+(BIC(linear_model, quad_model))
+
+
+
+```
+
+We go with the quad model
+
+## (c) Provide a plot of the correlogram (up to 25 lags) of the residuals of the model you chose in part (b). Is there any evidence of seasonal patterns in the correlogram? Explain your answer.
+
+```{r ACF}
+resid_trend <- residuals(quad_model)  # or linear_model
+
+# Plot ACF up to lag 25
+acf(resid_trend, lag.max = 25, main = "Correlogram of Residuals")
+
+```
+
+There is definitely seasonality, notice how the positive and negatively
+related lags occur in even intervals, that the same relationship between
+even interval lags indicates seasonality in the data.
+
+## (d) Estimate a model with a trend and a full set of dummy variables, and report the results.
+
+```{r seasonality}
+#will create a column indicating each month 
+elec_data$month <- factor(format(elec_data$date, "%m"))
+
+# Create time trend variable
+elec_data$trend <- 1:nrow(elec_data)
+
+# Estimate model: log(elec) ~ trend + monthly dummies
+seasonal_model <- lm(log(elec) ~ trend + month, data = elec_data)
+
+# View summary results
+summary(seasonal_model)
+AIC(seasonal_model)
+BIC(seasonal_model)
+
+```
+
+Our model is much more fit to the data with a 96% model fit, it looks
+like most of that is apart of seasonality, the only non significant
+factor in our model is month 7 and 8.
+
+## (e) Provide a plot of the correlogram (up to 25 lags) of the residuals of the model you chose in part (d). Is there any evidence of cyclical component or serial correlation in the residuals? Explain your answer.
+
+```{r correlationSeasonalModel}
+resid_trend_seasonal <- residuals(seasonal_model)
+
+acf(resid_trend_seasonal, lag.max = 25, main = "Correlogram of Residuals")
+
+
+```
+
+it looks like after plotting seasonality and trends, there is still some
+correlated lags, ideally, if we captured all the effects of the model,
+the plot of the residuals should just be a white noise process. But this
+correlogram still has a pretty significant relationship between the
+lags, which tells us that there is some cyclical component to be
+included in our model.
+
+## (f) Estimate an ARMA(p,q) model with p = 0, 1, 2, 3 and q = 0, 1, 2, 3, except for p = q = 0. Report the values of the BICs. Based on the correlogram and values of the BIC, which model would you choose? Explain your answer.
+
+```{r ARMA}
+log_ts <- ts(elec_data$log_elec, start = c(1973, 1), frequency = 12)
+
+
+bic_results <- data.frame(p = integer(), q = integer(), BIC = numeric())
+
+bic_results
+# Fit ARMA models and store BIC
+for (p in 0:3) {
+  for (q in 0:3) {
+    if (p == 0 & q == 0) next
+    model <- tryCatch(
+      arima(log_ts, order = c(p, 0, q)),
+      error = function(e) NULL
+    )
+    if (!is.null(model)) {
+      #if we got a non null value for arma(p,0,q), store its bic into the df 
+      bic_results <- rbind(bic_results, data.frame(p = p, q = q, BIC = BIC(model)))
+    }
+  }
+}
+bic_results
+# sort the results
+bic_results <- bic_results[order(bic_results$BIC), ]
+print(bic_results)
+
+```
+
+It looks like the Arima with the lowest BIC would be with 3 lags of yt
+and 3 lags of the error, so we will choose an ARMA(3,0,3) process for
+the rest of this section
+
+## (g) Report the estimation results of the model you choose in part (f). In addition, provide a plot and the correlogram (up to 25 lags) of the residuals of the model. Is there any evidence of cyclical component or serial correlation? Explain your answer
+
+```{r ARIMA(3,3), warnings = 'hide'}
+library(stats)
+log_ts <- ts(elec_data$log_elec, start = c(1973, 1), frequency = 12)
+
+# Fit ARMA(3,0,3) model
+arma_model <- arima(log_ts, order = c(3, 0, 3))
+
+arma_model
+
+```
+
+here is our very beautiful ARMA(3,3) summary on the log of electricity
+sales, it looks like each auto regressive lag is alternating in sign
+effect, but absolute magnitude of effect is decreasing, while there
+isn't a particular trend in the direction of the effect, but it also
+looks like the absolute magnitude is decreasing.
+
+```{r ArimaCorrelatedErrors}
+residual_arma <- residuals(arma_model)
+
+acf <- acf(residual_arma, lag.max = 25, main = "Correllogram of ARMA Residuals")
+
+```
+
+It looks like we've done a better job at making our residuals follow a
+white noise process, there is some high correlation at lag 12 and lag
+24, but most of the residuals do fall above the threshold of a white
+noise process, so it does suggest that the residuals could be serially
+correlated.
+
+## (h) Use the model you chose in part (f) to forecast the log of the electricity retail sales for the year of 2011, and compute its 95% forecast interval as well. Plot your point and interval forecasts together with the actual data for the period from 2008 to 2011
+
+```{r plotforecast}
+library(ggplot2)
+library(forecast)
+# Forecast for 12 months ahead (2011)
+arma_forecast <- forecast(arma_model, h = 12, level = 95)
+
+actual_ts <- window(log_ts, start = c(2008, 1), end = c(2011, 12))
+
+# forecast with confidence intervals and actual data
+autoplot(arma_forecast) +
+  autolayer(actual_ts, series = "Actual", color = "orange") +
+  labs(
+    title = "Forecast of Log Electricity Sales (2011)",
+    x = "Year",
+    y = "Log Electricity Sales"
+  ) +
+  theme_minimal() +
+  # <-- adjust this range as needed
+  guides(colour = guide_legend(title = "Series"))
+```
+
+# Question 2. Use the dataset wti_oil_price.csv that is available on Canvas. The variable oil_price is the seasonally-adjusted crude oil prices and is on dollars per barrel. The sample is at monthly frequency and covers the period from January 1986 to October 2024. Define the training sample as all information available up to 2022.
+
+## (a) Let yt denote the seasonally-adjusted oil prices. Plot yt over time. Does the data look stationary?
+
+```{r 2.a}
+oil_data <- read_csv("wti_oil_price.csv") 
+
+oil_data
+
+ggplot(oil_data, aes(x = date, y = log(oil_price))) +
+  geom_line(color = "darkblue", group = 1) +
+  labs(
+    title = "Seasonally-adjusted oil prices over time",
+    x = "Date",
+    y = "Seasonally-adjusted oil prices"
+  ) +
+  theme_minimal()
+  
+
+```
+
+At a first glance, it looks like this process isn't really stationary,
+its good that there doesnt seem to be a consistent linear trend, but the
+variance shocks seem to be very random. Maybe this suggest that this
+process doesn't have very strong components, or there exists a unit root
+
+## (b) Plot both the ACF and the PACF of yt. What does the correlogram suggest about yt?
+
+```{r 2.b}
+
+acf <- acf(oil_data$oil_price, lag.max = 25, main = "Corellogram of Oil Prices")
+
+pacf <- pacf(oil_data$oil_price, lag.max = 25, main = "Corellogram of Oil Prices")
+```
+
+So the ACF function seems to be gradually decreasing, while the pacf
+cuts off immediately, after lag(1), this suggest that this process
+follows an Autoregressive process of lag(1) or AR(1). This is because
+for this time series process, the effect of all lags past lag 1 is
+completely indirect, so its captured in the ACF, but in teh PACF which
+measures the direct effect of all lags individually, we see that every
+lag past lag 1 has no direct effect.
+
+## (c) To support your answer in the previous question, perform a Dickey-Fuller test for the presence of a unit root. More specifically, run a regression for each of the following specifications. For each specification, compute the Dickey-Fuller test statistic.
+
+```{r 2.c}
+oil_data$log_oil = log(oil_data$oil_price)
+attach(oil_data)
+oil_data$log_oil = log(oil_price)
+oil_data$diff_oil = c(NA, diff(log_oil))
+lag_log_oil = lag(log_oil)
+t = 1:nrow(oil_data)
+
+
+df_model1 <- lm(diff_oil ~ 0 + lag_log_oil, data = oil_data)
+summary(df_model1)
+
+df_model2 <- lm(diff_oil ~ lag_log_oil, data = oil_data)
+summary(df_model2)
+
+df_model3 <- lm(diff_oil ~ lag_log_oil + t, data = oil_data)
+summary(df_model3)
+```
+
+In both models 1 and 2, we see that the dicky fuller test gave us an
+insignificant outcome, meaning that there is not ennough evidence to
+reject a unit root.
+
+the last model has very slim margins of significance which probably isnt
+enough to reject the null hypothesis that there is a unit root too.
+
+## (d) Use the adf.test in R to perform the Dickey-Fuller test and compare your results with part (c). Do you obtain the same test statistic? Based on the p-values, do you have evidence to reject the null hypothesis of a unit root? From now on, consider the data in differences given by yt(in-differences) = yt - yt-1.
+
+```{r 1.d}
+library(tseries)
+dicky_fuller <- adf.test(log_oil, k = 0) 
+print(dicky_fuller)
+
+```
+
+adf gave us a p-value of 0.3009 which is a lot greater than the
+rejection baseline of 0.05 so we fail to reject the null hypothesis that
+the log of oil prices has a unit root (not stationary).
+
+##(e) Compute both the correlogram and the Augmented Dickey-Fuller test
+for the data in differences. What does the results suggest about yt(indiffernces)?
+
+```{r 2.e}
+attach(oil_data)
+diff_series <- na.omit(diff_oil)
+acf <- acf(diff_series, main = "acf")
+pact <- pacf(diff_series, main = "pacf")
+```
+
+Now there looks like a sharp cutoff in the ACF after lag 1, as well as
+in the PACF, this suggests that there is some sort of stationarity,
+potentially yt in differences follows an AR(1) process.
+
+## (f) Estimate an ARMA(p,q) model with p = 0, 1, 2, 3 and q = 0, 1, 2, 3 for yt. Report the values of the BICs. Based on the correlogram and values of the BICs, which model would you choose? Explain your answer.
+
+```{r 2.f}
+library(forecast)
+
+arma_bic_results <- data.frame(p = integer(), q = integer(), BIC = numeric())
+
+for (p in 0:3) {
+  for (q in 0:3) {
+    if (p == 0 && q == 0) next  # Skip (0,0)
+
+    model <- tryCatch(
+      Arima(diff_series, order = c(p, 0, q), include.mean = FALSE),
+      error = function(e) NULL
+    )
+
+    if (!is.null(model)) {
+      bic_val <- BIC(model)
+      arma_bic_results <- rbind(
+        arma_bic_results,
+        data.frame(p = p, q = q, BIC = bic_val)
+      )
+    }
+  }
+}
+
+# sort by BIC
+arma_bic_results <- arma_bic_results[order(arma_bic_results$BIC), ]
+print(arma_bic_results)
+
+
+
+
+```
+
+It looks like this process has a lowest BIC with an AR of 0 and a moving
+average process of 1. This aligned with the intuition of the Corellogram
+where only lag 1 has any sort of significant impact.
+
+## (g) Use the model you chose in part (f) to forecast changes in oil prices for the years of 2023 and 2024, and compute its 95% forecast interval as well. Plot your point and interval forecasts together with the actual data for the period from 2016 to 2024.
+
+```{r 2.g}
+
+diff_series <- ts(diff_series, start = c(1986, 2), frequency = 12)
+train_diff <- window(diff_series, end = c(2022, 12))  # training data
+
+start(diff_series)
+end(diff_series)
+ma_model <- Arima(train_diff, order = c(0, 0, 1))
+
+ma_model
+#  24 months ahead
+ma_forecast <- forecast(ma_model, h = 24, level = 95)
+
+ma_forecast
+
+
+diff_series_window <- window(diff_series, start = c(2016, 1))
+
+autoplot(ma_forecast) +
+  autolayer(diff_series_window, series = "Actual Changes", color = "black") +
+  labs(title = "Forecast of oil prices in differences (23-25)", x = "Year",
+    y = "Log Difference of Oil Prices"
+  ) +
+  theme_minimal() +
+  guides(color = guide_legend(title = "Series"))
+
+```
+
+## (h) Use the model you chose in part (f) to forecast the level of oil prices for the years of 2023 and 2024, and compute its 95% forecast interval as well. Plot your point and interval forecasts together with the actual data for the period from 2016 to 2024.
+
+```{r 2.h}
+library(dplyr)
+
+last_level <- tail(oil_data$oil_price, 1)  # oil price as of dec 2022
+
+# Recover level forecast from difference forecast
+level_forecast <- cumsum(ma_forecast$mean) + last_level
+
+
+lower_level <- cumsum(ma_forecast$lower[,1]) + last_level
+upper_level <- cumsum(ma_forecast$upper[,1]) + last_level
+
+
+dates_forecast <- seq(as.Date("2023-01-01"), by = "month", length.out = 24)
+
+# forecast sample
+oil_level_forecast <- data.frame(
+  date = dates_forecast,
+  point_forecast = level_forecast,
+  lower_95 = lower_level,
+  upper_95 = upper_level
+)
+
+
+oil_level_forecast
+
+plot_data <- oil_data[oil_data$date >= as.Date("2016-01-01"), c("date", "oil_price")]
+
+ggplot() +
+  geom_line(data = plot_data, aes(x = date, y = oil_price), color = "steelblue") +
+  geom_line(data = oil_level_forecast, aes(x = date, y = point_forecast), color = "orange", linewidth = 1) + 
+  geom_ribbon(data = oil_level_forecast, aes(x = date, ymin = lower_95, ymax = upper_95), alpha = 0.2, fill = "orange") +
+  labs(title = "Forecasted Oil Price Levels",
+       x = "Year", y = "Oil Price (USD/barrel)") +
+  theme_minimal()
+```
+
+# Question 3. Use the dataset disney_stock_price.csv that is available on Canvas. The variable dis- ney_stock is the closing price of Disney stock in the day. The sample is at daily frequency and covers the period from January 3, 2007 to November 13, 2024. Define the training sample as all information available up to September 2024.
+
+## (a) Let Pt denote the close price of the Disney stock. Plot the log of Pt over time, together with the correlogram of the data. Is there any evidence that the data is non-stationary? Explain your answer.
+
+```{r 3.a}
+library(dplyr)
+disney <- read.csv("disney_stock_price.csv")
+disney$X <- NULL
+
+ggplot(disney, aes(x = date, y = log(disney_stock))) + 
+  geom_line(color = "darkblue", group = 1) + 
+  labs(title = "log of disney stock over time", x = "time", 
+       y = "stock") + 
+  theme_minimal()
+
+
+```
+
+it looks like the averaege of this process is increasing over time, as
+well as a potential non constant variance is causing pretty weird spikes
+around some certain areas. 
+
+## (b) From now on, let rt denote the the first difference of the log price, rt = differences log(Pt). Plot rt over time. Do you observe any volatility clustering? In which periods the volatility is higher
+
+```{r 3.b, warning = 'hide'}
+disney$rt <- c(NA, diff(log(disney$disney_stock)))
+length(disney$disney_stock)
+ggplot(disney, aes(x = date, y = rt)) + 
+  geom_line(color = "darkblue", group = 1) 
+  
+```
+
+there is definitely some volatility clustering
+
+## (c) Plot the histogram and compute the descriptive statistics of rt (mean, median, standard deviation, skewness and kurtosis). Is there any evidence that the data is leptokurtic?
+
+```{r 3.c}
+library(moments)
+ggplot(disney, aes(x = rt)) + 
+  geom_histogram(bins = 50, fill = "pink", color = "orange")
+
+skewness(disney$rt, na.rm = TRUE)
+kurtosis(disney$rt, na.rm = TRUE) 
+
+
+summary(disney$rt)
+
+```
+
+lets be honest, a fourth central moment around the mean of 12 is WILDLY
+leptokurtic
+
+the data is centered around the mean but we've got the occasional VERY
+EXTREME outliar thats shooting our kurtosis values up \## (d) Compute
+the correlogram of the squared returns, that is, r2\t . Is there any
+evidence of serial correlation?
+
+```{r 3.d}
+squared_returns <- disney$rt^2
+
+squared_returns <- na.omit(squared_returns)
+acf_disney <- acf(squared_returns, lag.max = 25, main = "acf")
+pacf_disney <- pacf(squared_returns, lag.max = 25, main = "acf")
+```
+
+the volatility of returns is definetly correlated, we see that all of
+the squared differences of returns are above the min threshold, meaning
+that the magnitude of returns are serially corrrelated.
+
+## (e) Estimate an AR(1) model for the squared returns. Is the AR(1) coefficient significant? What does that mean for rt?
+
+```{r 3.e}
+library(forecast)
+
+returns_model <- arima(squared_returns, order = c(1,0,0))
+
+returns_model
+```
+
+The AR(1) coefficient is `r round(returns_model$coef["ar1"], 4)`, with a
+standard error of `r round(sqrt(diag(vcov(returns_model)))["ar1"], 4)`. If we 
+run a t-test to see if our lag is statistically significant we get, `r round(returns_model$coef["ar1"] / sqrt(diag(vcov(returns_model)))["ar1"], 2)`. This is highly significant, 
+it suggests that there is significant autocorrelation in the variance. 
+
+
+## (f) Estimate an ARCH(1) and a GARCH(1,1) model for which one fits the data better (based on SIC)?
+
+
+``` {r 3.f}
+library(rugarch)
+library(fGarch)
+
+rt <- na.omit(disney$rt)
+
+model_arch <- garchFit(~ garch(1,0), data = rt, trace = FALSE)
+model_garch <- garchFit(~ garch(1, 1), data = rt, trace = FALSE)
+summary(model_garch)
+summary(model_arch)
+
+
+
+```
+looks like GARCH(1,1) has a smaller AIC, and out performed in the sense of model fit
+
+## (g) Estimate an AR(1)-ARCH(1) and a AR(1)-GARCH(1,1) 
+
+
+```{r 3.g}
+
+arch_ar1 <- garchFit(formula = ~ arma(1,0) + garch(1,0), data = rt,
+                     trace = FALSE)
+garch_ar1 <- garchFit(formula = ~ + arma(1,0) + garch(1,1), 
+                      data = rt, trace = FALSE)
+
+summary(garch_ar1)
+summary(arch_ar1)
+
+```
+it looks like the AR(1)-GARCH(1,1) model performed just a bit better, witha BIC of -5.48 compared to AR(1)-ARCH(1)'s BIC of -5.30
+
+GARCH(1,1) did the best but very marginally, but in reality, adding an AR(1) component didn't really chnage much. 
+
+
+## (h) Plot the estimated conditional volatility of the best-fitting model among the ones considered in the previous parts.
+
+``` {r 3.h}
+cond_vol <- garch_ar1@sigma.t
+
+vol_df <- data.frame(
+  date = disney$date[!is.na(disney$rt)],  # remove NA to align
+  volatility = cond_vol
+)
+
+library(ggplot2)
+
+ggplot(vol_df, aes(x = date, y = volatility, group = 1)) +
+  geom_line(color = "darkred") +
+  labs(
+    title = "Estimated Conditional Volatility from AR(1)-GARCH(1,1)",
+    x = "Date",
+    y = "Conditional Volatility)"
+  ) +
+  theme_minimal()
+```
+
+
+## (i) Use the model you chose in the previous part to forecast the conditional volatility of rt for the period of October and November of 2024. Plot your forecasts together with the estimated conditional volatility for the period between 2020 and 2024.
+
+
+``` {r 3.i}
+vol_forecast <- predict(model_garch, n.ahead = 43)
+
+forecast_dates <- seq(from = as.Date("2024-10-01"), by = "day", length.out = 43)
+forecast_df <- data.frame(
+  date = forecast_dates,
+  forecast_vol = vol_forecast$standardDeviation
+)
+
+hist_vol_df <- data.frame(
+  date = disney$date[-1],
+  vol = model_garch@sigma.t
+) %>%
+  filter(date >= as.Date("2020-01-01"))
+
+library(ggplot2)
+hist_vol_df$date <- as.Date(hist_vol_df$date)
+ggplot() +
+  geom_line(data = hist_vol_df, aes(x = date, y = vol), color = "navy", linewidth = 0.5) +
+  geom_line(data = forecast_df, aes(x = date, y = forecast_vol), color = "orange", linewidth = 1) +
+  labs(
+    title = "Forecasted Conditional Volatilit",
+    x = "Date",
+    y = "Conditional Volatility"
+  ) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b %Y") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+```

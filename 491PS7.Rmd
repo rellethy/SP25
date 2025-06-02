@@ -1,0 +1,259 @@
+---
+title: "491PS7"
+author: "Ramsey EL Lethy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Question 1 (concept)[16p (=8+8)]
+## This question relates to the plots in Figure 1.
+
+### (a) Sketch the tree corresponding to the partition of the predictor space illustrated in the left-hand panel of Figure 1. The numbers inside the boxes indicate the mean of Y within each region.
+
+![Tree](/Users/ramseyellethy/Downloads/491.pdf){length=100%, width=100%}
+
+### (b) Create a diagram similar to the left-hand panel of Figure 1, using the tree illustrated in the right-hand panel of the same figure. You should divide up the predictor space into the correct regions, and indicate the mean for each region.
+
+
+![Tree](/Users/ramseyellethy/Downloads/491 2.pdf){length=100%, width=100%}
+
+
+# Question 2 (applied)[60p (=0+6×10)]
+
+## This problem involves the OJ data set which is part of the ISLR2 package.
+
+
+### (a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+```{r 2.a}
+library(ISLR2)
+set.seed(9)
+data(OJ)
+
+train_indices <- sample(1:nrow(OJ), 800)
+OJ_train <- OJ[train_indices, ]
+
+OJ_test <- OJ[-train_indices, ]
+
+nrow(OJ_train)  
+nrow(OJ_test)  
+```
+
+
+### (b) Fit a tree to the training data, with Purchase as the response and the other vari- ables as predictors. Use the summary() function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+```{r 2.b}
+library(tree)
+
+tree_OJ <- tree(Purchase ~ ., data = OJ_train)
+
+summary(tree_OJ)
+```
+The tree has 9 terminal nodes, it looks like the training error rate is 0.1588
+
+### (c) Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
+
+```{r 2.c}
+tree_OJ
+```
+Looking at node number 9, if LoyalCH is less than 0.0356415, predict with 
+80.05% probability that the outcome is MM
+
+
+###(d) Create a plot of the tree, and interpret the results.
+
+```{r 2.d}
+par(mfrow = c(1,1))  
+plot(tree_OJ)
+text(tree_OJ, pretty = 0)
+```
+The base tree has 9 terminal nodes, it looks like most of the data can be initially
+split between a medial LoyalCH value of 0.5036. For LoyalCH values of under 0.5036, 
+it looks like most of the outcomes are MM, while for values greater, most of them are 
+CH.
+
+### (e) Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
+
+```{r 2.e}
+tree_pred <- predict(tree_OJ, newdata = OJ_test, type = "class")
+
+conf_matrix <- table(Predicted = tree_pred, Actual = OJ_test$Purchase)
+conf_matrix
+
+test_error <- mean(tree_pred != OJ_test$Purchase)
+test_error
+```
+
+### (f) Apply the cv.tree() function to the training set in order to determine the optimal tree size.
+
+```{r 2.f}
+cv_OJ <- cv.tree(tree_OJ, FUN = prune.misclass)
+cv_OJ
+```
+looks like the tree size that minimizes dev is 7 
+
+### (g) Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
+```{r 2.g}
+plot(cv_OJ$size, cv_OJ$dev, type = "b",
+     xlab = "Tree Size", ylab = "CV Misclassification Error")
+```
+
+### (h) Which tree size corresponds to the lowest cross-validated classification error rate?
+
+based on the graph, tree 7 corresponds to the lowest misclassifacation error rate
+ 
+### (i) Produce a pruned tree corresponding to the optimal tree size obtained using cross- validation. If cross-validation does not lead to selection of a pruned tree, then create a pruned tree with five terminal nodes.
+
+```{r 2.i}
+best_size = 7
+pruned_OJ <- prune.misclass(tree_OJ, best = best_size)
+
+plot(pruned_OJ)
+text(pruned_OJ, pretty = 0)
+```
+
+### (j) Compare the training error rates between the pruned and unpruned trees. Which is higher?
+
+```{r 2.j}
+train_pred_unpruned <- predict(tree_OJ, newdata = OJ_train, type = "class")
+train_pred_pruned <- predict(pruned_OJ, newdata = OJ_train, type = "class")
+
+train_err_unpruned <- mean(train_pred_unpruned != OJ_train$Purchase)
+train_err_pruned <- mean(train_pred_pruned != OJ_train$Purchase)
+
+train_err_unpruned
+train_err_pruned
+
+```
+The training error rate for the unpruned tree is 0.15875
+The training error rate for the pruned tree is 0.1625
+
+the unpruned tree's training error rate is higher, this is expected because pruning reduces
+variance, but increases the general fit. 
+
+###(k) Compare the test error rates between the pruned and unpruned trees. Which is higher?
+
+```{r 2.k}
+test_pred_pruned <- predict(pruned_OJ, newdata = OJ_test, type = "class")
+
+test_err_pruned <- mean(test_pred_pruned != OJ_test$Purchase)
+
+test_err_pruned
+test_error 
+
+
+```
+The test error rate for the pruned tree is 0.16293
+The test error rate for the unpruned tree is 0.1703
+
+The test error rate for the unpruned tree is higher than the test error rate of 
+the pruned tree 
+
+
+
+
+
+# Question 3 (applied)[24p (=0+6+6+6+6)]
+
+## In the lab, a classification tree is applied to the Carseats data set after converting Sales into a qualitative response variable. Now we will seek to predict Sales using regression trees and related approaches, treating the response as a quantitative variable.
+
+
+### (a) Split the data set into a training set and a test set. (Hint: To be able to reproduce your results, do not forget to set the seed in your randomization using the command set.seed().)
+
+```{r 3.a}
+library(ISLR2)
+library(tree)
+
+set.seed(9)
+
+data(Carseats)
+train_indices <- sample(1:nrow(Carseats), 200)
+Carseats_train <- Carseats[train_indices, ]
+Carseats_test <- Carseats[-train_indices, ]
+
+```
+
+
+### (b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+
+```{r 3.b}
+tree_carseats <- tree(Sales ~ ., data = Carseats_train)
+summary(tree_carseats)
+
+plot(tree_carseats)
+text(tree_carseats, pretty = 1, cex = 0.6)
+
+
+sales <- predict(tree_carseats, newdata = Carseats_test)
+
+test_mse <- mean((sales - Carseats_test$Sales)^2)
+
+test_mse
+
+```
+
+### (c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+
+```{r 3.c}
+cv_carseats <- cv.tree(tree_carseats)
+
+cv_carseats
+
+best_size <- cv_carseats$size[which.min(cv_carseats$dev)]
+best_size
+pruned_tree <- prune.tree(tree_carseats, best = best_size)
+
+
+pruned_pred <- predict(pruned_tree, newdata = Carseats_test)
+
+pruned_test_mse <- mean((pruned_pred - Carseats_test$Sales)^2)
+
+pruned_test_mse
+```
+It looks like the pruning increased the test MSE, we've underfit the model just a bit, 
+this reduced the number of terminal nodes, but in turn we're looking to reduce the variance
+
+### (d) Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the importance() function to determine which variables are most important.
+
+```{r 3.d}
+library(randomForest)
+
+bagged_model <- randomForest(Sales ~ ., data = Carseats_train,
+                             mtry = ncol(Carseats_train) - 1,  
+                             importance = TRUE)
+
+bagged_pred <- predict(bagged_model, newdata = Carseats_test)
+bagged_test_mse <- mean((bagged_pred - Carseats_test$Sales)^2)
+bagged_test_mse
+
+
+importance(bagged_model)  
+
+varImpPlot(bagged_model)
+```
+Looks like based on how much of an increase in error rate that ShelveLoc has if we remove it,
+its the most important variable in our model. This is backed up by how much the 
+residual sum of squares reduces when we split on that variable. 
+
+Our Bagged test MSE came out to 3.525, thats a great decrease from our other mdodels!
+
+bagging so far has done the best job at reducing the error in predicting unseen values
+
+### (e) Use random forests to analyze this data. What test MSE do you obtain? Use the importance() function to determine which variables are most important. Describe the effect of m, the number of variables considered at each split, on the error rate obtained.
+
+```{r 3.e}
+rf <- randomForest(Sales ~ ., data = Carseats_train, importance = TRUE)
+
+rf_pred <- predict(rf, newdata = Carseats_test)
+
+rf_test_mse <- mean((rf_pred - Carseats_test$Sales)^2)
+rf_test_mse
+
+
+importance(rf)
+varImpPlot(rf)
+```
+Looks like once again ShelveLoc and Price are flying out the gate with how much of an 
+impact it has on our model when we split on them. 
+
+It looks like the Test MSE for rf is just a bit bigger than bagging, so bagging 
+would be our most optimal choice in this data. 
+
